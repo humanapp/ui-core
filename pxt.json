@@ -1,0 +1,40 @@
+{
+    "name": "ui-core",
+    "version": "0.0.1",
+    "files": [
+        "ns.ts",
+        "geometry.ts",
+        "viewport.ts",
+        "draw-surface.ts",
+        "bitmap-draw-surface.ts",
+        "display-shield-frame-adapter.ts",
+        "runtime.ts",
+        "input.ts",
+        "screen.ts",
+        "layout.ts",
+        "focus.ts",
+        "focus-navigation.ts",
+        "focus-runtime.ts",
+        "view.ts",
+        "modal.ts"
+    ],
+    "yotta": {
+        "config": {
+            "DEVICE_BLE": 0
+        }
+    },
+    "supportedTargets": [
+        "microbit"
+    ],
+    "testFiles": [
+        "test.ts",
+        "samples.ts"
+    ],
+    "dependencies": {
+        "core": "*",
+        "radio": "*",
+        "microphone": "*",
+        "display-shield": "github:microbit-apps/display-shield#v1.1.4"
+    },
+    "testDependencies": {}
+}

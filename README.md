@@ -1,0 +1,281 @@
+# **ui-core** for micro:bit apps
+
+**ui-core** is the core of a small UI toolkit for building [micro:bit apps](https://microbit-apps.org/): apps that run on the [BBC micro:bit](https://microbit.org/) + [Display Shield](https://microbit-apps.org/getting-started/display-shields/).
+
+It gives an app a small screen runtime, semantic input, focus routing, screens, and modal scaffolding. Higher-level controls such as labels, buttons, pickers, and field modals live in [**ui-controls**](https://github.com/humanapp/ui-controls), which is built on top of **ui-core**.
+
+## The Short Version
+
+**ui-core** gives an app a small screen runtime:
+
+- Draw in a fixed `160x120` pixel coordinate space.
+- Put each app page in a `UiScreen`.
+- Push screens onto one `UiRuntime`.
+- Queue input events such as `up`, `down`, `activate`, and `cancel`.
+- Start the runtime to deliver input, update the active screen, render it, and
+  commit frames to the Display Shield.
+
+You can draw directly in a screen or add screen-owned focusable views. Reusable
+controls and modal UI (buttons, labels, pickers, numeric and text entry) live in
+**ui-controls**.
+
+## 1. Draw In Display Coordinates
+
+The Display Shield is `160x120` pixels. **ui-core** uses that same
+coordinate space, with `(0, 0)` at the top-left corner.
+
+```ts
+class HelloScreen extends ui.UiScreen {
+    public render(surface: ui.DrawSurface): void {
+        surface.drawText("Hello", 19, 11, { color: 3 })
+        surface.drawRect(new ui.Rect(4, 4, 60, 22), 7)
+        super.render(surface)
+    }
+}
+```
+
+All drawing methods use palette color indices. The default palette matches
+[MakeCode Arcade's default palette](https://arcade.makecode.com/reference/scene/background-color).
+Text, bitmaps, rectangles, lines, and circles are drawn through the `DrawSurface`
+passed to `render()`.
+
+## 2. Start A Runtime
+
+A typical app creates one runtime, pushes the first screen, and starts the
+runtime.
+
+```ts
+const runtime = new ui.UiRuntime(new ui.DisplayShieldFrameAdapter())
+
+runtime.push(new HelloScreen(runtime))
+runtime.start()
+```
+
+`start()` registers a frame handler with the current MakeCode event context. It
+delivers queued input to the active screen, calls the
+screen's `update()`, calls `render()`, and commits the frame to the display
+adapter. Call `stop()` when the app should stop drawing UI frames.
+Screens receive the runtime in their constructor.
+
+## 3. Make A Screen Own App State
+
+Screens are the normal place to keep page state and respond to input. Use
+`handleInput()` when the screen wants first chance at an event.
+
+```ts
+class CounterScreen extends ui.UiScreen {
+    private count: number
+
+    constructor(runtime: ui.UiRuntime) {
+        super(runtime)
+        this.count = 0
+        this.backgroundColor = 0
+    }
+
+    public handleInput(event: ui.UiInputEvent): boolean | undefined {
+        if (event.phase == "released") return undefined
+
+        if (event.action == "activate") {
+            this.count += 1
+        } else if (event.action == "cancel") {
+            this.count = 0
+        } else {
+            return undefined
+        }
+
+        return true
+    }
+
+    public render(surface: ui.DrawSurface): void {
+        surface.drawText("Count:", 8, 8, { color: 1 })
+        surface.drawText("" + this.count, 8, 24, { color: 7 })
+        super.render(surface)
+    }
+}
+```
+
+Returning `true` from `handleInput` means the screen handled the event.
+Returning `undefined` lets **ui-core** try focus routing. While a
+modal is open, the modal receives input before the screen.
+
+## 4. Handle Semantic Input
+
+The runtime works with semantic actions, not specific buttons. A
+`UiInputEvent` names what the user meant to do: `up`, `down`, `left`, `right`,
+`activate`, `cancel`, or `menu`.
+
+Input events also include a `source` (`board`,
+`controller`, or `synthetic`) and a `phase` (`pressed`, `released`, or `repeated`). Most screens only need `action`; use
+`phase` when release events or key repeat should behave differently from the
+initial press.
+
+Call `runtime.dispatchInput()` from event callbacks or other application code. The runtime queues those events and delivers them on the next frame. When
+no modal is open, the active screen gets first chance through `handleInput()`,
+then the runtime tries focus routing when the screen returns `undefined`.
+
+## 5. Map micro:bit Input To Actions
+
+Map micro:bit button callbacks to the semantic actions your UI uses.
+For example, a simple two-button app can use A as activate and B as cancel.
+
+```ts
+input.onButtonPressed(Button.A, function () {
+    runtime.dispatchInput({
+        action: "activate",
+        source: "board",
+    })
+})
+
+input.onButtonPressed(Button.B, function () {
+    runtime.dispatchInput({
+        action: "cancel",
+        source: "board",
+    })
+})
+```
+
+## A Few Working Rules
+
+- Prefer semantic input events inside screens instead of checking physical
+  buttons in every screen.
+- Keep one runtime for the app and push, pop, or replace screens as the user
+  moves through the app.
+- Reuse `Rect`, `Size`, and `UiMeasuredSize` objects in frame code when practical. Avoid allocations in the render callback.
+- Reach for **ui-controls** when an app needs labels, buttons, pickers, or modal entry UI rather than re-implementing them on top of `DrawSurface`.
+
+## Using **ui-core**
+
+**ui-core** is a MakeCode extension. There are two normal ways to use it:
+
+- **Work in the MakeCode Editor** when you want the in-editor project workflow.
+- **Work in VS Code** when you want files on disk, source control, collaboration, and command-line
+  builds.
+
+### Workflow 1: MakeCode Editor
+
+Use this workflow when you want to build in the browser and let MakeCode manage
+the project.
+
+You need:
+
+- The [MakeCode editor for micro:bit](https://makecode.microbit.org).
+- A [BBC micro:bit](https://microbit.org/) and [Display Shield](https://microbit-apps.org/getting-started/display-shields/) when you want to run on hardware.
+
+To add **ui-core**:
+
+1. Open `https://makecode.microbit.org` and create or open a project.
+2. Open the Extensions window from the toolbox.
+3. Paste this repository URL into the extension search box:
+
+    ```text
+    https://github.com/humanapp/ui-core
+    ```
+
+4. Select the extension when MakeCode finds it.
+5. Switch to JavaScript view and use the `ui` namespace.
+
+### Workflow 2: VS Code
+
+Use this workflow when you want a local project folder that can be edited in
+VS Code and built from the command line.
+
+You need:
+
+- [VS Code](https://code.visualstudio.com/download)
+- [Node.js and npm](https://nodejs.org/en/download)
+- The
+  [Microsoft MakeCode Arcade VS Code extension](https://marketplace.visualstudio.com/items?itemName=ms-edu.pxt-vscode-web).
+  Despite the name, it also works for micro:bit projects and is especially
+  useful for running the MakeCode simulator from VS Code.
+- The MakeCode command-line tool:
+
+    ```sh
+    npm install -g makecode
+    ```
+
+- A BBC micro:bit and Display Shield when you want to run on hardware.
+
+To create a new local micro:bit project:
+
+```sh
+mkc init microbit
+mkc add https://github.com/humanapp/ui-core ui-core
+mkc build
+```
+
+Then open the folder in VS Code. Use the MakeCode icon in the activity bar to
+open the MakeCode Action Palette. From there you can start the MakeCode simulator, install project
+dependencies, add extensions by GitHub URL, and
+build for hardware.
+
+To add **ui-core** to an existing local project, run this from the project
+folder:
+
+```sh
+mkc add https://github.com/humanapp/ui-core ui-core
+mkc build
+```
+
+If you add the extension from VS Code instead, use the MakeCode Extension's
+**Add an Extension** command and paste:
+
+```text
+https://github.com/humanapp/ui-core
+```
+
+## More Examples
+
+These examples show more small patterns you can copy into an app.
+
+### Using App-Owned Bitmaps Or Text in UI
+
+Controls can refer to bitmaps and labels by id. Provide an asset resolver when
+the runtime is created.
+
+```ts
+class AppAssets implements ui.UiAssetResolver {
+    public getBitmap(
+        id: string | number,
+        nullIfMissing?: boolean,
+    ): Bitmap | undefined {
+        if (id == "start") {
+            return bmp`
+                . 7 .
+                7 7 7
+                . 7 .
+            `
+        }
+
+        if (nullIfMissing) return undefined
+        return bmp`.`
+    }
+
+    public getText(id: string): string {
+        if (id == "startLabel") return "Start"
+        return ""
+    }
+}
+
+const runtime = new ui.UiRuntime(
+    new ui.DisplayShieldFrameAdapter(),
+    0,
+    new AppAssets(),
+)
+```
+
+Screens can also keep bitmaps and strings as fields. Asset resolvers are most
+useful when reusable controls need stable ids instead of direct values.
+
+## Going Further
+
+When an app needs labels, buttons, modal dialogs, numeric or text entry, add
+[**ui-controls**](https://github.com/humanapp/ui-controls) on top of **ui-core**.
+
+## Existing Projects
+
+These micro:bit apps projects use **ui-core** (often together with **ui-controls**) and are useful references
+when you want to see the library in action:
+
+- [microcode-v2](https://github.com/microbit-apps/microcode-v2)
+- [microdata](https://github.com/microbit-apps/microdata)
+- [microgui](https://github.com/microbit-apps/microgui)
