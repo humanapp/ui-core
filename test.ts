@@ -1,4 +1,4 @@
-namespace ui {
+namespace ui.core.tests {
     class TestBitmapDisplayAdapter implements UiDisplayAdapter {
         private surface_: BitmapDrawSurface
 
@@ -488,12 +488,12 @@ namespace ui {
             "missing spec preferred height",
         )
     }
+
+    runGeometrySmokeTest()
+    runViewportSmokeTest(2)
+    runAssetResolverSmokeTest()
+    runRuntimeSmokeTest()
+    runLayoutSmokeTest()
+
+    control.__log(1, "All tests passed!")
 }
-
-ui.runGeometrySmokeTest()
-ui.runViewportSmokeTest(2)
-ui.runAssetResolverSmokeTest()
-ui.runRuntimeSmokeTest()
-ui.runLayoutSmokeTest()
-
-control.__log(1, "All tests passed!")
