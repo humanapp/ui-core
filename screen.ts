@@ -127,6 +127,32 @@ namespace ui {
         }
 
         /**
+         * Removes a previously added root view. Returns true when the view was
+         * found and removed. Cleans up the view's focus scope and navigation
+         * when it registered one.
+         */
+        public remove<TView extends UiView<any>>(view: TView): boolean {
+            let index = -1
+            for (let i = 0; i < this.roots_.length; i++) {
+                if (this.roots_[i].view === view) {
+                    index = i
+                    break
+                }
+            }
+            if (index < 0) return false
+            this.roots_.splice(index, 1)
+            const focusable = <any>view
+            if (
+                focusable.registerFocusTargets &&
+                focusable.scopeId !== undefined
+            ) {
+                this.focusInput_.clearNavigation(focusable.scopeId)
+                this.focus_.removeScope(focusable.scopeId)
+            }
+            return true
+        }
+
+        /**
          * Called after the screen has been pushed onto a runtime stack.
          */
         public _enter(): void {
