@@ -62,6 +62,42 @@ namespace ui {
     }
 
     /**
+     * Map entry: a bitmap, or a factory invoked to produce one.
+     */
+    export type UiBitmapEntry = Bitmap | (() => Bitmap)
+
+    /**
+     * Asset resolver backed by a caller-supplied id-to-bitmap map. An entry may
+     * be a bitmap or a factory; a factory is invoked on each request. Missing
+     * ids return the fallback bitmap, or `undefined` when `nullIfMissing` is
+     * set.
+     */
+    export class UiMapAssets implements UiAssetResolver {
+        private map_: { [key: string]: UiBitmapEntry }
+        private fallback_: Bitmap
+
+        constructor(map: { [key: string]: UiBitmapEntry }, fallback?: Bitmap) {
+            this.map_ = map
+            this.fallback_ = fallback
+        }
+
+        public getBitmap(
+            id: string | number,
+            nullIfMissing?: boolean,
+        ): Bitmap | undefined {
+            const entry = this.map_[id]
+            if (entry === undefined)
+                return nullIfMissing ? undefined : this.fallback_
+            if (typeof entry == "function") return (<() => Bitmap>entry)()
+            return <Bitmap>entry
+        }
+
+        public getText(id: string): string {
+            return ""
+        }
+    }
+
+    /**
      * Owns screen stack state, queued input, and frame execution.
      */
     export class UiRuntime {

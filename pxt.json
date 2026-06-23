@@ -16,7 +16,8 @@
         "focus-navigation.ts",
         "focus-runtime.ts",
         "view.ts",
-        "modal.ts"
+        "modal.ts",
+        "icons.ts"
     ],
     "yotta": {
         "config": {
